@@ -13,18 +13,25 @@ import "./SafeMath.sol";
         
     ERC20 标准没有定义increaseAllowance, decreaseAllowance 函数，这里采用的是openzeppelin的实现，增加了这两个函数.
 
-    在标准代币的基础上，HDT同时要承担冻结分红机制，所以增加了冻结、解冻功能.
-    1) 冻结有24小时锁定期;
-    2) 冻结下限为 1 hdt;
-    3) 解冻下限为 1 hdt;
+    由于HashDice token要承担冻结、解冻、领取的业务逻辑，所以增加了相关参数、事件及函数。
+    冻结、解冻、领取的业务逻辑如下:
+    1) 冻结下限为100 hdt;
+    2) 冻结后可以立即解冻;
+    3) 解冻下限为100 hdt;
+    4) 解冻可以撤销，撤销是将解冻金额全部重新冻结;
+    5) 解冻金额24小时之后才能领取，领取是全部领取;
+
+    事件触发机制:
+    1. 冻结时，触发Freeze事件;
+    2. 领取时，触发Transfer事件，从TRC20合约向用户转账;
+    3. 解冻时，触发Traw事件;
+    4. 撤销解冻时，触发Traw事件，解冻金额为0;
+    由于原本TRC20合约本身没有余额，引入了冻结、解冻逻辑之后，如果直接使用Transfer事件累加计算余额的话，TRC20合约本身会有余额，
+    而在合约中取TRC20合约地址的余额，却依然会是0.
  */
 
 contract HashDiceTRC20{
     using SafeMath for uint256;
-
-    uint constant private FREEZE_PERIOD = 24 hours;
-    uint constant private MIN_FREEZE = 1 * (10 ** 9);
-    uint constant private MIN_THAW = 1* (10 ** 9);
 
     string private _name;
     string private _symbol;
@@ -33,17 +40,28 @@ contract HashDiceTRC20{
     mapping (address => uint256) private _balances;
 
     mapping (address => mapping (address => uint256)) private _allowed;
-    
-    mapping (address => uint256) private _frozen;
-    mapping (address => uint256) private _last_frozen_time;
 
     uint256 private _totalSupply;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    //冻结业务逻辑相关参数.    
+
+    uint constant private FREEZE_PERIOD = 24 hours;
+    uint constant private MIN_FREEZE = 100 * (10 ** 9);
+    uint constant private MIN_THAW = 100* (10 ** 9);
+
+    mapping (address => uint256) private _frozen;
+    mapping (address => uint256) private _thaws;
+    mapping (address => uint256) private _last_thaw_time;
+
     event Freeze(address indexed from, uint256 value);
     event Thaw(address indexed from, uint256 value);
 
+    /**
+     * @dev constructor function.
+     */
     constructor () public {
         _name = "HashDice";
         _symbol = "HDT";
@@ -109,12 +127,21 @@ contract HashDiceTRC20{
     }
 
     /**
+    * @dev Gets the thaws token of the specified address.
+    * @param owner The address to query the frozen of.
+    * @return An uint256 representing the amount thaws by the passed address.
+    */
+    function thawsOf(address owner) public view returns (uint256) {
+        return _thaws[owner];
+    }
+
+    /**
     * @dev Gets the last frozen time of the specified address.
     * @param owner The address to query the last frozen time of.
     * @return An uint256 representing the last frozen time by the passed address.
     */
-    function lastFrozenTime(address owner) public view returns (uint256) {
-        return _last_frozen_time[owner];
+    function lastThawTime(address owner) public view returns (uint256) {
+        return _last_thaw_time[owner];
     }
 
     /**
@@ -196,20 +223,60 @@ contract HashDiceTRC20{
     }
 
     /**
-    * @dev Freeze token for a specified address
+    * @dev Freeze token.
     * @param value The amount to be frozen.
     */
     function freeze(uint256 value) public returns (bool) {
-        _freeze(msg.sender, value);
+        require( value >= MIN_FREEZE );
+
+        _balances[msg.sender] = _balances[msg.sender].sub(value);
+        _frozen[msg.sender] = _frozen[msg.sender].add(value);
+
+        emit Freeze(msg.sender, value);
         return true;
     }
 
     /**
-    * @dev Thaw token for a specified address
+    * @dev Thaw token.
     * @param value The amount to be thaw.
     */
     function thaw(uint256 value) public returns (bool) {
-        _thaw(msg.sender, value);
+        require( value >= MIN_THAW );
+
+        _last_thaw_time[msg.sender] = now;
+
+        _frozen[msg.sender] = _frozen[msg.sender].sub(value);
+        _thaws[msg.sender] = _thaws[msg.sender].add(value);
+
+        emit Thaw(msg.sender, value);
+        return true;
+    }
+
+    /**
+    * @dev Cancel thaw token.
+    */
+    function cancelThaw() public returns (bool) {
+        _last_thaw_time[msg.sender] = 0;
+
+        uint256 _temp = _thaws[msg.sender];
+        _thaws[msg.sender] = 0;
+        _frozen[msg.sender] = _frozen[msg.sender].add(_temp);
+        
+        emit Thaw(msg.sender, 0);
+        return true;
+    }
+
+    /**
+    * @dev Withthaw thawed token.
+    */
+    function withdraw() public returns (bool) {
+        require( _last_thaw_time[msg.sender] + FREEZE_PERIOD < now );
+
+        uint256 _temp = _thaws[msg.sender];
+        _thaws[msg.sender] = 0;
+        _balances[msg.sender] = _balances[msg.sender].add(_temp);
+
+        emit Transfer(address(this), msg.sender, _temp);
         return true;
     }
 
@@ -228,34 +295,6 @@ contract HashDiceTRC20{
      */
     function burnFrom(address from, uint256 value) public {
         _burnFrom(from, value);
-    }
-
-    /**
-    * @dev Freeze token for a specified addresses
-    * @param from The address to freeze from.
-    * @param value The amount to be frozen.
-    */
-    function _freeze(address from, uint256 value) internal {
-        require( value >= MIN_FREEZE );
-        _last_frozen_time[from] = now;
-
-        _balances[from] = _balances[from].sub(value);
-        _frozen[from] = _frozen[from].add(value);
-        emit Freeze(from, value);
-    }
-
-    /**
-    * @dev Thaw token for a specified addresses
-    * @param from The address to thaw from.
-    * @param value The amount to be thaw.
-    */
-    function _thaw(address from, uint256 value) internal {
-        require( value >= MIN_THAW );
-        require( _last_frozen_time[from] + FREEZE_PERIOD < now );
-
-        _frozen[from] = _frozen[from].sub(value);
-        _balances[from] = _balances[from].add(value);
-        emit Thaw(from, value);
     }
 
     /**
