@@ -19,7 +19,7 @@ contract('HashDice', function() {
     it("set secret signer", async function (){
         let res = await tronWeb.contract().at(_contract_addr);
 
-        await res.setSecretSigner("").send();
+        await res.setSecretSigner(_signer_hex).send();
         let _signer = await res.secretSigner().call();
         console.log("Secret Signer HEX: " + _signer); 
         console.log("Secret Signer: " + tronWeb.address.fromHex(_signer)); 

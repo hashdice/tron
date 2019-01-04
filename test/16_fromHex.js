@@ -1,3 +1,4 @@
+const config = require('../config.js');
 
 contract('HashDice', function() {
     it("get contract variables", async function (){

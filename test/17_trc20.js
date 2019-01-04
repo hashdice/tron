@@ -12,18 +12,17 @@ contract('HashDice TRC20', function() {
         let _balance = await res.balanceOf(_addr).call();
         console.log("address: " + _addr + " Balance: " + _balance); 
     });    
-    
-    /*
+        
     it("transfer", async function (){
         let res = await tronWeb.contract().at(_contract_addr);
 
-        await res.transfer(_to, 50000 * 1e9).send();
+        await res.transfer(_to, 1000000 * 1e9).send();
 
         let _balance = await res.balanceOf(_addr).call();
         console.log("from address: " + _addr + " Balance: " + _balance); 
         _balance = await res.balanceOf(_to).call();
         console.log("to address: " + _to + " Balance: " + _balance); 
-    });  */
+    });  
 
     /*it("approve", async function (){
         let res = await tronWeb.contract().at(_contract_addr);
