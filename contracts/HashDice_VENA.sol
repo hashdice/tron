@@ -32,7 +32,7 @@ contract HashDice_VENA {
   // constants.
   uint constant JACKPOT_MODULO = 1000;
 
-  uint constant MAX_AMOUNT = 100000000 * (10 ** 6);  //100,000,000 VENA;
+  uint constant MAX_AMOUNT = 100000000 * (10 ** 18);  //100,000,000 VENA;
   uint constant MAX_MODULO = 100;
   uint constant MAX_MASK_MODULO = 40;
   uint constant MAX_BET_MASK = 2 ** MAX_MASK_MODULO;
@@ -56,16 +56,18 @@ contract HashDice_VENA {
   uint128 public lockedInBets;
   
   // storage variables (与币种相关的部分)
-  uint public maxProfit = 100000 * (10 ** 6);  //100,000 vena
-  uint public minBet = 80 * (10 ** 6);        //80 vena
-  uint public houseEdge = 15;                 //1.5%
-  uint public minHouseEdge = 4 * (10 ** 6);   //4 vena
+  uint constant VENA_DECIMAL = 8;
 
-  uint public minJackpotBet = 1000 * (10 ** 6);//1000 vena
-  uint public jackpotFee = 10 * (10 ** 6);     //10 vena
+  uint public maxProfit = 100000 * (10 ** VENA_DECIMAL);  //100,000 vena
+  uint public minBet = 80 * (10 ** VENA_DECIMAL);        //80 vena
+  uint public houseEdge = 15;                 //1.5%
+  uint public minHouseEdge = 4 * (10 ** VENA_DECIMAL);   //4 vena
+
+  uint public minJackpotBet = 1000 * (10 ** VENA_DECIMAL);//1000 vena
+  uint public jackpotFee = 10 * (10 ** VENA_DECIMAL);     //10 vena
 
   struct Bet {
-    // 投注额(以vena decimal为单位, 1 vena = 10 ** vena hdt decimal).
+    // 投注额(以vena decimal为单位, 1 vena = 10 ** vena decimal).
     uint amount;
     // 游戏类别(取模值).
     uint8 modulo;
@@ -140,7 +142,7 @@ contract HashDice_VENA {
     status = _ACTIVE;
     secretSigner = DUMMY_ADDRESS;
     croupier = DUMMY_ADDRESS;
-    _trc20 = VENATRC20I(address(0x0));                                                                       
+    _trc20 = VENATRC20I(address(0x9725b4E3B16bd317Ae76c845727e64112Da9fe80));                                                                       
   }
   
   // Fallback function revert.

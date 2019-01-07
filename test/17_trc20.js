@@ -2,8 +2,8 @@ const config = require('../config.js');
 
 var _contract_addr = config.hdt.contract;
 
-var _addr = config.hdt.from_addr;
-var _to = config.hdt.to_addr;
+var _addr = config.environments.hdt.address;
+var _to = config.crowdsale.contract;
 
 contract('HashDice TRC20', function() {
     it("get balance", async function (){
@@ -13,6 +13,7 @@ contract('HashDice TRC20', function() {
         console.log("address: " + _addr + " Balance: " + _balance); 
     });    
         
+    /*
     it("transfer", async function (){
         let res = await tronWeb.contract().at(_contract_addr);
 
@@ -22,6 +23,14 @@ contract('HashDice TRC20', function() {
         console.log("from address: " + _addr + " Balance: " + _balance); 
         _balance = await res.balanceOf(_to).call();
         console.log("to address: " + _to + " Balance: " + _balance); 
+    });  */
+
+    it("allowance", async function (){
+        let res = await tronWeb.contract().at(_contract_addr);
+
+        let _allow = await res.allowance(_addr, _to).call();
+        console.log("owner address: " + _addr);
+        console.log("spender address: " +  _to + " Allowance: " + _allow);
     });  
 
     /*it("approve", async function (){

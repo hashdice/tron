@@ -1,0 +1,22 @@
+{
+  "name": "hashdice",
+  "version": "1.0.0",
+  "description": "a fair gambling game on tron network.",
+  "main": "main.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@hashdice:hashdice/tron.git"
+  },
+  "author": "hashdice",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "tronweb": "^2.1.25"
+  }
+}

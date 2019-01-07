@@ -1,8 +1,6 @@
 # 我的定制
-.ssh/
-.vscode/
 build/
-docs/
+dividend/
 config.js
 
 # Logs

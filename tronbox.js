@@ -40,6 +40,19 @@ module.exports = {
       solidityNode: "https://api.trongrid.io",
       eventServer: "https://api.trongrid.io",
       network_id: "*" 
+    },
+    shasta: {
+      from: config.environments.shasta.address,
+      privateKey: config.environments.shasta.private_key,
+      consume_user_resource_percent: 50,
+      fee_limit: 100000000,    //100 trx
+      origin_energy_limit: 10000000, //10 trx
+      host: "https://api.shasta.trongrid.io",
+      port: 8090,
+      fullNode: "https://api.shasta.trongrid.io",
+      solidityNode: "https://api.shasta.trongrid.io",
+      eventServer: "https://api.shasta.trongrid.io",
+      network_id: "*"      
     }
   }
 };

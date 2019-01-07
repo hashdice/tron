@@ -100,7 +100,7 @@ contract HashDiceCrowdsale is ReentrancyGuard {
     constructor () public {
         _token = HashDiceTRC20I(address(0xb123a9807BD8aFBa091719934CD59c403bdd66c8));
         _cap = 6250000 * (10 ** 6);
-        _individual_cap = 250000 * (10 ** 6);
+        _individual_cap = 1250000 * (10 ** 6);
         _wallet = address(0x451E7C33c74Aab0bDC4F8a35b47f1699604F8605);
         _rate = 80 * (10 ** 3);
         _openingTime = 1546905600;
