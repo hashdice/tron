@@ -173,7 +173,7 @@ contract HashDice_HDT {
     require (_betMask > 0 && _betMask < MAX_BET_MASK, "Mask should be within range.");
 
     //转账
-    _trc20.transferFrom(msg.sender, address(this), _amount);
+    require (_trc20.transferFrom(msg.sender, address(this), _amount),"Should approve at first.");
     
     uint rollUnder;
     uint mask;

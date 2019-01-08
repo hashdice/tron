@@ -1,7 +1,7 @@
 
 const config = require('../config.js');
 
-var _contract_addr = config.hashdice.contract;
+var _contract_addr = config.hashdice_vena.contract;
 
 contract('HashDice', function() {
     it("get contract variables", async function (){

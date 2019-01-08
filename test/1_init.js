@@ -1,7 +1,7 @@
 
 const config = require('../config.js');
 
-var _addr = config.environments.hdt.address;
+var _addr = config.environments.hashdice.address;
 var _contract = config.hashdice.contract;
 
 contract('HashDice', function() {
