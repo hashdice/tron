@@ -1,9 +1,9 @@
 const config = require('../config.js');
 
-var _contract_addr = config.hdt.contract;
+var _contract_addr = config.vena.contract;
 
-var _addr = config.environments.hdt.address;
-var _to = config.crowdsale.contract;
+var _addr = config.hashdice_vena.contract_hex;
+var _to = config.hashdice_vena.contract_hex;
 var _value = 10000;
 
 var _vena_decimal = 1e8;
