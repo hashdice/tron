@@ -12,11 +12,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@hashdice:hashdice/tron.git"
+    "url": "https://github.com/hashdice/tron.git"
   },
   "author": "hashdice",
   "license": "GPL-3.0",
   "dependencies": {
-    "tronweb": "^2.1.25"
+    "tronweb": "^2.1.27"
   }
 }
