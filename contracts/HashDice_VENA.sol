@@ -32,7 +32,6 @@ contract HashDice_VENA {
   // constants.
   uint constant JACKPOT_MODULO = 1000;
 
-  uint constant MAX_AMOUNT = 100000000 * (10 ** 18);  //100,000,000 VENA;
   uint constant MAX_MODULO = 100;
   uint constant MAX_MASK_MODULO = 40;
   uint constant MAX_BET_MASK = 2 ** MAX_MASK_MODULO;
@@ -56,9 +55,10 @@ contract HashDice_VENA {
   uint128 public lockedInBets;
   
   // storage variables (与币种相关的部分)
-  uint constant VENA_DECIMAL = 8;
-
-  uint public maxProfit = 100000 * (10 ** VENA_DECIMAL);  //100,000 vena
+  uint constant VENA_DECIMAL = 6;
+  uint constant MAX_AMOUNT = 100000000 * (10 ** VENA_DECIMAL);  //100,000,000 VENA;
+  
+  uint public maxProfit = 8000 * (10 ** VENA_DECIMAL);  //8,000 vena
   uint public minBet = 80 * (10 ** VENA_DECIMAL);        //80 vena
   uint public houseEdge = 15;                 //1.5%
   uint public minHouseEdge = 4 * (10 ** VENA_DECIMAL);   //4 vena
@@ -142,7 +142,7 @@ contract HashDice_VENA {
     status = _ACTIVE;
     secretSigner = DUMMY_ADDRESS;
     croupier = DUMMY_ADDRESS;
-    _trc20 = VENATRC20I(address(0x9725b4E3B16bd317Ae76c845727e64112Da9fe80));                                                                       
+    _trc20 = VENATRC20I(address(0xc96523df8a26bd4107b664d9a0c6ca8472c0acff));                                                                       
   }
   
   // Fallback function revert.

@@ -1,5 +1,5 @@
 const config = require('../config.js');
-var contract_addr = config.hashdice.contract;
+var contract_addr = config.hashdice.vena.contract;
 var hdt_addr = config.hdt.contract_hex;
 
 const _commit = new Array("",
@@ -33,7 +33,7 @@ contract('HashDice', function() {
         });
     }); */
 
-    
+    /*
     it("withdraw funds: ", async function (){        
         let res = await tronWeb.contract().at(contract_addr);
         let ret = await res.withdrawFunds("",5000 * 1e6).send({
@@ -41,7 +41,7 @@ contract('HashDice', function() {
             shouldPollResponse:false});
 
         console.log(ret);        
-    }); 
+    }); */
 
     /*
     it("kill contract: ", async function (){        
