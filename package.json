@@ -16,7 +16,5 @@
   },
   "author": "hashdice",
   "license": "GPL-3.0",
-  "dependencies": {
-    "tronweb": "^2.1.27"
-  }
+  "dependencies": {}
 }
