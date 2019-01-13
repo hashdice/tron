@@ -57,7 +57,7 @@ contract HashDice_VENA {
   // storage variables (与币种相关的部分)
   uint constant VENA_DECIMAL = 6;
   uint constant MAX_AMOUNT = 100000000 * (10 ** VENA_DECIMAL);  //100,000,000 VENA;
-  
+
   uint public maxProfit = 8000 * (10 ** VENA_DECIMAL);  //8,000 vena
   uint public minBet = 80 * (10 ** VENA_DECIMAL);        //80 vena
   uint public houseEdge = 15;                 //1.5%
@@ -142,7 +142,7 @@ contract HashDice_VENA {
     status = _ACTIVE;
     secretSigner = DUMMY_ADDRESS;
     croupier = DUMMY_ADDRESS;
-    _trc20 = VENATRC20I(address(0xc96523df8a26bd4107b664d9a0c6ca8472c0acff));                                                                       
+    _trc20 = VENATRC20I(address(0xc96523DF8A26Bd4107B664D9A0c6Ca8472C0acFf));                                                                       
   }
   
   // Fallback function revert.
