@@ -46,7 +46,7 @@ contract HashDice {
   uint128 public lockedInBets;
 
   // storage variables (与币种相关的部分)
-  uint public maxProfit = 50000 trx;
+  uint public maxProfit = 2000 trx;
   uint public minBet = 20 trx;
   uint public houseEdge = 15;
   uint public minHouseEdge = 1 trx;

@@ -72,5 +72,6 @@ contract('HashDice', function() {
         await res.setJackpotFee(5 * 1e9).send();
         let _jackpot_fee = await res.jackpotFee().call();
         console.log("Jackpot Fee: " + _jackpot_fee); 
-    });  */
+    });  
+    */
 })

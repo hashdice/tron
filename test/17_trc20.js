@@ -1,20 +1,23 @@
 const config = require('../config.js');
 
-var _contract_addr = config.vena.contract;
+var _contract_addr = config.hdt.contract;
 
-var _addr = config.hashdice.vena.contract_hex;
+var _addr = 'TPpuV5TRnb8s5YTpQW7yjDyyKbkjSi2Das';
 var _to = config.hashdice.vena.contract_hex;
 var _value = 10000;
 
 var _vena_decimal = 1e8;
 var _hdt_decimal = 1e9;
 
-contract('VENA TRC20', function() {
+contract('HDT TRC20', function() {
     it("get balance", async function (){
         let res = await tronWeb.contract().at(_contract_addr);
 
         let _balance = await res.balanceOf(_addr).call();
-        console.log("address: " + _addr + " Balance: " + _balance); 
+        let _frozen = await res.frozenOf(_addr).call();
+
+        console.log("address: " + _addr + " Balance: " + _balance);         
+        console.log("address: " + _addr + " Frozen: " + _frozen); 
     });            
     
     /*

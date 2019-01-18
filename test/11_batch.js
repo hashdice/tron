@@ -40,7 +40,7 @@ contract('HashDice', function() {
                             console.log("tx hash: " + result);
                             console.log("commit: ", commit);
                             console.log("r: ", r);
-                            console.log("s: ", s);
+                            console.log("s: ", s); 
                             resolve(commit);
                         }).catch(err => {
                             resolve(err);
