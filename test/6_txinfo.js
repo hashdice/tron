@@ -1,5 +1,5 @@
 
-const _txhash = "20d7352a9fde38c2aa5d2b19bb6e1f10395cd4146ab0ea492a381c5f5791a29d";
+const _txhash = "0dd92cfd3820eb652f8c17b33bc0d4b73efe9da624f59021702c29ee29ce124c";
 
 contract('HashDice', function() {
     it("get tx info...", async function (){

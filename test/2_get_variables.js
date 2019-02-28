@@ -1,7 +1,7 @@
 
 const config = require('../config.js');
 
-var _contract_addr = config.hashdice.trx.contract;
+var _contract_addr = 'TJpw9juMWzHLnJJbVZ9exPMrMKpuXHFLt6';
 
 contract('HashDice', function() {
     it("get contract variables", async function (){
@@ -25,8 +25,8 @@ contract('HashDice', function() {
         let _min_bet = await res.minBet().call();
         console.log("Min Bet:" + _min_bet);  
 
-        let _house_edge = await res.houseEdge().call();
-        console.log("House Edge:" + _house_edge);  
+        /*let _house_edge = await res.houseEdge().call();
+        console.log("House Edge:" + _house_edge);  */
 
         let _min_house_edge = await res.minHouseEdge().call();
         console.log("Min House Edge:" + _min_house_edge); 

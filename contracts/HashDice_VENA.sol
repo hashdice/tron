@@ -1,12 +1,11 @@
 /**+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 HashDice: a Block Chain Gambling Game.
 
-Don't trust anyone but the CODE!
+Don't need to trust anyone but the CODE!
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 /**+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    - HashDice是一个建立在以太坊区块链上的博彩平台，具有去中心化、公平、透明、可验证等优点，以及不受包括开发者在内的任何个人
-    - 和组织操控的特性。
+    - HashDice_VENA 是HashDice系列合约之一，使用 vena TRC20 代币投注。
 
     - 游戏的核心业务逻辑来源于dice2.win的设计!
     - 对合约进行了一些优化：
@@ -15,26 +14,24 @@ Don't trust anyone but the CODE!
     - 2) 只有本合约签名的commit/reveal对才能投注，未签名和已经使用过的commit/reveal对禁入，因此存储不能清除；
     - 3) 增加合约状态管理功能;
     - 4) 处理潜在的溢出风险;
-
-    本合约仅接受VENA投注.
+    - 5) 修改roll游戏逻辑;
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++**/
 pragma solidity ^0.4.20;
 
-contract VENATRC20I {
+contract TRC20I {
   function balanceOf(address owner) public view returns (uint256);
   function transfer(address to, uint256 value) public returns (bool);
   function transferFrom(address from, address to, uint256 value) public returns (bool);
 }
 
-contract HashDice_VENA {
-  VENATRC20I private _trc20;
+contract HashDice_VENA {  
+  TRC20I private _trc20;
   //--------------------------------------------------------------------------------------------------
   // constants.
-  uint constant JACKPOT_MODULO = 1000;
-
   uint constant MAX_MODULO = 100;
   uint constant MAX_MASK_MODULO = 40;
   uint constant MAX_BET_MASK = 2 ** MAX_MASK_MODULO;
+  uint constant HOUSE_EDGE = 15;
   
   uint constant POPCNT_MULT = 0x0000000000002000000000100000000008000000000400000000020000000001;
   uint constant POPCNT_MASK = 0x0001041041041041041041041041041041041041041041041041041041041041;
@@ -44,36 +41,37 @@ contract HashDice_VENA {
   
   address constant DUMMY_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   //--------------------------------------------------------------------------------------------------
-  // storage variables.
-  
+  // storage variables.  
   address public owner;
   address private nextOwner;
   address public croupier;
   address public secretSigner;
-  
+
+  uint public jackpotModulo = 1000;
   uint128 public jackpotSize;
   uint128 public lockedInBets;
+  uint public maxRollRange = 97;
+
+  // storage variables (与币种相关的部分)  
+  uint constant TOKEN_DECIMAL = 6;
+
+  uint constant MAX_AMOUNT = 100000000 * (10 ** TOKEN_DECIMAL);  //100,000,000 VENA;
+
+  uint public maxProfit = 8000 * (10 ** TOKEN_DECIMAL);  //8,000 vena
+  uint public minBet = 80 * (10 ** TOKEN_DECIMAL);        //80 vena
+  uint public minHouseEdge = 2 * (10 ** TOKEN_DECIMAL);   //2 vena
+
+  uint public minJackpotBet = 1000 * (10 ** TOKEN_DECIMAL);//1000 vena
+  uint public jackpotFee = 10 * (10 ** TOKEN_DECIMAL);     //10 vena
   
-  // storage variables (与币种相关)
-  uint constant VENA_DECIMAL = 6;
-  uint constant MAX_AMOUNT = 100000000 * (10 ** VENA_DECIMAL);  //100,000,000 VENA;
-
-  uint public maxProfit = 8000 * (10 ** VENA_DECIMAL);  //8,000 vena
-  uint public minBet = 80 * (10 ** VENA_DECIMAL);        //80 vena
-  uint public houseEdge = 15;                 //1.5%
-  uint public minHouseEdge = 4 * (10 ** VENA_DECIMAL);   //4 vena
-
-  uint public minJackpotBet = 1000 * (10 ** VENA_DECIMAL);//1000 vena
-  uint public jackpotFee = 10 * (10 ** VENA_DECIMAL);     //10 vena
-
   struct Bet {
-    // 投注额(以vena decimal为单位, 1 vena = 10 ** vena decimal).
+    // 投注额(以sun为单位).
     uint amount;
     // 游戏类别(取模值).
     uint8 modulo;
-    // 赔率 (* modulo/rollUnder),
+    // 赔率 (* modulo/rollRange),
     // 对于 modulo > MAX_MASK_MODULO 的游戏用 mask 代替.
-    uint8 rollUnder;
+    uint8 rollRange;
     // placeBet tx 区块号.
     uint40 placeBlockNumber;
     // 投注掩码.
@@ -142,13 +140,13 @@ contract HashDice_VENA {
     status = _ACTIVE;
     secretSigner = DUMMY_ADDRESS;
     croupier = DUMMY_ADDRESS;
-    _trc20 = VENATRC20I(address(0xc96523DF8A26Bd4107B664D9A0c6Ca8472C0acFf));                                                                       
+    
+    _trc20 = TRC20I(address(0xD9358c1590Bbe1Cb2037D63576e46bFB15A36Ca2));    //shasta
   }
   
-  // Fallback function revert.
-  // this contract don't accept trx directly.
+  // Fallback function deliberately left empty. It's primary use case
+  // is to top up the bank roll.
   function () public payable {
-    revert();
   }
   
   //--------------------------------------------------------------------------------------------------
@@ -156,7 +154,8 @@ contract HashDice_VENA {
   
   // @dev 投注
   // @note 只有本合约签名的commit/reveal对才能进入.
-  function placeBet(uint _amount, uint _betMask, uint _modulo, uint _commit, bytes32 _r, bytes32 _s)    
+  function placeBet(uint _amount, uint _betMask, uint _modulo, uint _commit, bytes32 _r, bytes32 _s)
+    payable
     public
     onlyHuman
     onlyActive
@@ -164,62 +163,62 @@ contract HashDice_VENA {
     //验证_commit为"clean"状态.
     Bet storage bet = bets[_commit];
     require (bet.gambler == address(0), "Bet should be in a 'clean' state.");
-    
+
     //验证签名.
     bytes32 signatureHash = keccak256(abi.encodePacked(_commit));
     require (secretSigner == ecrecover(signatureHash, 27, _r, _s), "ECDSA signature is not valid.");
-    
+
     //验证数据范围.
     require (_modulo > 1 && _modulo <= MAX_MODULO, "Modulo should be within range.");
     require (_amount >= minBet && _amount <= MAX_AMOUNT, "Amount should be within range.");
     require (_betMask > 0 && _betMask < MAX_BET_MASK, "Mask should be within range.");
 
     //转账
-    require (_trc20.transferFrom(msg.sender, address(this), _amount),"Should approve at first.");
-    
-    uint rollUnder;
-    uint mask;
-    
+    require (_trc20.transferFrom(msg.sender, address(this), _amount),"TRC20 should approve at first.");
+
+    uint rollRange;
+
     if (_modulo <= MAX_MASK_MODULO) {
       // Small modulo games specify bet outcomes via bit mask.
-      // rollUnder is a number of 1 bits in this mask (population count).
+      // rollRange is a number of 1 bits in this mask (population count).
       // This magic looking formula is an efficient way to compute population
       // count on EVM for numbers below 2**40.
-      rollUnder = ((_betMask * POPCNT_MULT) & POPCNT_MASK) % POPCNT_MODULO;
-      mask = _betMask;
-      } else {
-        // Larger modulos specify the right edge of half-open interval of
-        // winning bet outcomes.
-        require (_betMask > 0 && _betMask <= _modulo, "High modulo range, betMask larger than modulo.");
-        rollUnder = _betMask;
-      }
+      rollRange = ((_betMask * POPCNT_MULT) & POPCNT_MASK) % POPCNT_MODULO;
+    } else {
+        // Larger modulos specify the range roll game.
+        rollRange = uint(uint8(_betMask >> 8) - uint8(_betMask) + 1);    
+        require ( uint8(_betMask) > 0 &&
+              uint8(_betMask >> 8) >= uint8(_betMask) && 
+              uint8(_betMask >> 8) <= _modulo && 
+              rollRange <= _modulo * maxRollRange / 100, "Roll out of range.");
+    }
       
-      // Winning amount and jackpot increase.
-      uint possibleWinAmount;
-      uint _jackpot_fee;
-      
-      (possibleWinAmount, _jackpot_fee) = getDiceWinAmount(_amount, _modulo, rollUnder);
-      
-      // Enforce max profit limit.
-      require (possibleWinAmount <= _amount + maxProfit, "maxProfit limit violation.");
-      
-      // Lock funds.
-      lockedInBets += uint128(possibleWinAmount);
-      jackpotSize += uint128(_jackpot_fee);
-      
-      // Check whether contract has enough funds to process this bet.
-      require (jackpotSize + lockedInBets <= _trc20.balanceOf(address(this)), "Cannot afford to lose this bet.");
-      
-      // Record commit in logs.
-      emit OnCommit(_commit);
-      
-      // Store bet parameters on blockchain.
-      bet.amount = _amount;
-      bet.modulo = uint8(_modulo);
-      bet.rollUnder = uint8(rollUnder);
-      bet.placeBlockNumber = uint40(block.number);
-      bet.mask = uint40(mask);
-      bet.gambler = msg.sender;
+    // Winning amount and jackpot increase.
+    uint possibleWinAmount;
+    uint _jackpot_fee;
+    
+    (possibleWinAmount, _jackpot_fee) = getDiceWinAmount(_amount, _modulo, rollRange);
+    
+    // Enforce max profit limit.
+    require (possibleWinAmount <= _amount + maxProfit, "maxProfit limit violation.");
+    
+    // Lock funds.
+    lockedInBets += uint128(possibleWinAmount);
+    jackpotSize += uint128(_jackpot_fee);
+    
+    // Check whether contract has enough funds to process this bet.
+    require (jackpotSize + lockedInBets <=  _trc20.balanceOf(address(this)), "Cannot afford to lose this bet.");
+    
+    // Record commit in logs.
+    emit OnCommit(_commit);
+    
+    // Store bet parameters on blockchain.
+    bet.amount = _amount;
+    bet.modulo = uint8(_modulo);
+    bet.rollRange = uint8(rollRange);
+    bet.placeBlockNumber = uint40(block.number);
+    bet.mask = uint40(_betMask);
+    bet.gambler = msg.sender;
   }
     
   //@dev 开奖
@@ -261,11 +260,11 @@ contract HashDice_VENA {
       
     uint diceWinAmount;
     uint _jackpot_fee;
-    (diceWinAmount, _jackpot_fee) = getDiceWinAmount(amount, bet.modulo, bet.rollUnder);
+    (diceWinAmount, _jackpot_fee) = getDiceWinAmount(amount, bet.modulo, bet.rollRange);
       
     assert(diceWinAmount <= lockedInBets);
     lockedInBets -= uint128(diceWinAmount);
-    // If jackpotSize overflow, that's very few accident, we offered _jackpot_fee.
+    // If jackpotSize overflow, that's very few accident, we offered jackpot fee.
     if(_jackpot_fee <= jackpotSize)
       jackpotSize -= uint128(_jackpot_fee);
       
@@ -278,30 +277,24 @@ contract HashDice_VENA {
     
   // Core settlement code for settleBet.
   function settleBetCore(Bet storage _bet, uint _reveal, bytes32 _entropyHash) internal {
-    // Fetch bet parameters into local variables (to save gas).
-    uint amount = _bet.amount;
     uint modulo = _bet.modulo;
-    uint rollUnder = _bet.rollUnder;
-    address gambler = _bet.gambler;
-      
+    uint amount = _bet.amount;
+    uint mask = _bet.mask;
     // Check that bet is in 'active' state.
     require (amount != 0, "Bet should be in an 'active' state");
-      
-    // Move bet into 'processed' state already.
-    _bet.amount = 0;
-      
+
     // The RNG - combine "reveal" and tx hash of placeBet using Keccak256. Miners
     // are not aware of "reveal" and cannot deduce it from "commit" (as Keccak256
     // preimage is intractable), and house is unable to alter the "reveal" after
     // placeBet have been mined (as Keccak256 collision finding is also intractable).
-    bytes32 entropy = keccak256(abi.encodePacked(_reveal, _entropyHash));
+    bytes32 entropy = keccak256(abi.encodePacked(_reveal, _entropyHash));    
       
     // Do a roll by taking a modulo of entropy. Compute winning amount.
     uint dice = uint(entropy) % modulo;
-      
+
     uint diceWinAmount;
-    uint _jackpot_fee;
-    (diceWinAmount, _jackpot_fee) = getDiceWinAmount(amount, modulo, rollUnder);
+    uint jackpot_fee;
+    (diceWinAmount, jackpot_fee) = getDiceWinAmount(amount, modulo, _bet.rollRange);
       
     uint diceWin = 0;
     uint jackpotWin = 0;
@@ -309,12 +302,12 @@ contract HashDice_VENA {
     // Determine dice outcome.
     if (modulo <= MAX_MASK_MODULO) {
       // For small modulo games, check the outcome against a bit mask.
-      if ((2 ** dice) & _bet.mask != 0) {
+      if ((2 ** dice) & mask != 0) {
         diceWin = diceWinAmount;
       }        
     } else {
-      // For larger modulos, check inclusion into half-open interval.
-      if (dice < rollUnder) {
+      // For larger modulos, check inclusion of roll range.
+      if (dice >= (uint8(mask) - 1) && dice <= (uint8(mask >> 8) - 1)) {
         diceWin = diceWinAmount;
       }          
     }
@@ -327,7 +320,7 @@ contract HashDice_VENA {
     if (amount >= minJackpotBet) {
       // The second modulo, statistically independent from the "main" dice roll.
       // Effectively you are playing two games at once!
-      uint jackpotRng = (uint(entropy) / modulo) % JACKPOT_MODULO;
+      uint jackpotRng = (uint(entropy) / modulo) % jackpotModulo;
           
       // Bingo!
       if (jackpotRng == 0) {
@@ -338,27 +331,30 @@ contract HashDice_VENA {
         
     // Log jackpot win.
     if (jackpotWin > 0) {
-      emit OnJackpotPay(gambler, jackpotWin);
+      emit OnJackpotPay(_bet.gambler, jackpotWin);
     }
-        
+      
+    // Move bet into 'processed' state already.
+    _bet.amount = 0;   
+
     // Send the funds to gambler.
-    sendFunds(gambler, diceWin + jackpotWin == 0 ? 1 : diceWin + jackpotWin, diceWin);
+    sendFunds(_bet.gambler, diceWin + jackpotWin == 0 ? 1 sun : diceWin + jackpotWin, diceWin);
   }
       
   // Get the expected win amount after house edge is subtracted.
-  function getDiceWinAmount(uint amount, uint modulo, uint rollUnder) internal view returns (uint winAmount, uint _jackpot_fee) {
-    require (0 < rollUnder && rollUnder <= modulo, "Win probability out of range.");
+  function getDiceWinAmount(uint amount, uint modulo, uint rollRange) internal view returns (uint winAmount, uint _jackpot_fee) {
+    require (0 < rollRange && rollRange <= modulo, "Win probability out of range.");
         
     _jackpot_fee = amount >= minJackpotBet ? jackpotFee : 0;
         
-    uint _house_edge = amount * houseEdge / 1000;
+    uint _house_edge = amount * HOUSE_EDGE / 1000;
         
     if (_house_edge < minHouseEdge) {
       _house_edge = minHouseEdge;
     }
         
     require (_house_edge + _jackpot_fee <= amount, "Bet doesn't even cover house edge.");
-    winAmount = (amount - _house_edge - _jackpot_fee) * modulo / rollUnder;
+    winAmount = (amount - _house_edge - _jackpot_fee) * modulo / rollRange;
   }
       
   // Standard contract ownership transfer implementation,
@@ -401,10 +397,6 @@ contract HashDice_VENA {
     minBet = _input;
   }
 
-  function setHouseEdge(uint _input) public onlyOwner {    
-    houseEdge = _input;
-  }
-
   function setMinHouseEdge(uint _input) public onlyOwner {    
     minHouseEdge = _input;
   }
@@ -416,6 +408,14 @@ contract HashDice_VENA {
   function setJackpotFee(uint _input) public onlyOwner {    
     jackpotFee = _input;
   }
+
+  function setJackpotModulo(uint _input) public onlyOwner {    
+    jackpotModulo = _input;
+  }
+
+  function setMaxRollRange(uint _input) public onlyOwner {    
+    maxRollRange = _input;
+  }  
 
   // This function is used to bump up the jackpot fund. Cannot be used to lower it.
   function increaseJackpot(uint increaseAmount) public onlyOwner {
@@ -439,7 +439,7 @@ contract HashDice_VENA {
   }
 
   /**
-  * @dev reset HDT TRC20 contract address.
+  * @dev reset TRC20 contract address.
     */
   function resetNetwork(address _addr) 
     public
@@ -447,7 +447,7 @@ contract HashDice_VENA {
     returns(bool)
   {
     require (getCodeSize(_addr)>0);     
-    _trc20 = VENATRC20I(_addr);
+    _trc20 = TRC20I(_addr);
     return true;
   }
 

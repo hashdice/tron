@@ -1,6 +1,7 @@
 # 我的定制
 build/
 dividend/
+test/
 config.js
 
 # Logs

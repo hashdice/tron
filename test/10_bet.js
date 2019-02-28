@@ -1,9 +1,9 @@
 
 const config = require('../config.js');
 
-var _contract = config.hashdice.trx.contract;
+var _contract = 'TR1i1AxQgdoN5A6WTfkp5U2UzvybqGV3EW';
 
-const _commit = "0xce31d78cca6b30dd77ba360be3a9aa278b5b1911ddbfc8c0cf9ee89c1dcc8a7f";
+const _commit = "0x8f395f765cc17c47669d8985e1c8fa7bfb7a33cc0241931c5ae64adac37d5f4a";
 
 contract('HashDice', function() {
     it("get bet info: " + _commit, async function (){

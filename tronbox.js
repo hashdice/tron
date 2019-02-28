@@ -5,7 +5,7 @@ module.exports = {
     mainnet: {
       from: config.environments.mainnet.address,
       privateKey: config.environments.mainnet.private_key,
-      consume_user_resource_percent: 10,
+      consume_user_resource_percent: 1,
       fee_limit: 10000000,    //10 trx
       origin_energy_limit: 10000000,  //10 trx
       host: "https://api.trongrid.io",
@@ -44,7 +44,7 @@ module.exports = {
     shasta: {
       from: config.environments.shasta.address,
       privateKey: config.environments.shasta.private_key,
-      consume_user_resource_percent: 10,
+      consume_user_resource_percent: 1,
       fee_limit: 100000000,    //100 trx
       origin_energy_limit: 10000000, //10 trx
       host: "https://api.shasta.trongrid.io",

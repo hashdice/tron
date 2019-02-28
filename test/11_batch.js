@@ -2,10 +2,9 @@
 var request = require('request');
 const config = require('../config.js');
 
-var account_addr = config.environments.mainnet.address;
-var contract_addr = config.hashdice.contract;
-
-const _betnum = 1;
+//var account_addr = config.environments.shasta.address;
+var contract_addr = 'TTfiDSFUmQHi88SuPRQfs8zmtzpCuvPbmC';
+var _betnum = 1;
 
 contract('HashDice', function() {
     /*  程序逻辑
@@ -16,7 +15,20 @@ contract('HashDice', function() {
     it("batch test -- " + _betnum + " times place bet. ", async function (){
         let contract = await tronWeb.contract().at(contract_addr);
 
-        testBet(_betnum);
+        let j=0;
+        for (var i = 0; i < _betnum; i++) {                       
+            let r =      "0x90f1a8aa791c0b60256c0c724db2805a10f2f97ef02a77f1e8eeda0219aeeb3b";
+            let s =      "0x37734be53c950ee49bc80fa748b41cbf5f2df78df1ec73904d5ac0a587edd238";
+            let commit = "0xce31d78cca6b30dd77ba360be3a9aa278b5b1911ddbfc8c0cf9ee89c1dcc8a7f";
+            
+            await contract.placeRoll(5 ,15, commit, r, s).send({
+                feeLimit:   10000000,
+                callValue:  20000000,   //20 trx
+                shouldPollResponse: false
+            }).then(console.log);                           
+        }
+       
+        //testBet(_betnum);
 
         async function testBet(betnum) {
             var promiseList = [];        

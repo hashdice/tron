@@ -1,8 +1,8 @@
 const config = require('../config.js');
 
-var _contract_addr = config.hashdice.contract;
-var _signer_hex = config.hashdice.secret_signer;
-var _croupier_hex = config.hashdice.croupier;
+var _contract_addr = 'TJpw9juMWzHLnJJbVZ9exPMrMKpuXHFLt6'; //config.hashdice.contract;
+var _signer_hex = '0x8Bb2e6DF4bEd2dEDbF4CF69D1321d55f234e2f71';
+var _croupier_hex = '0x52a33D828482c31836e578E482E130f07D562d9e';
 
 contract('HashDice', function() {
     /*
@@ -24,7 +24,6 @@ contract('HashDice', function() {
         console.log("Secret Signer HEX: " + _signer); 
         console.log("Secret Signer: " + tronWeb.address.fromHex(_signer)); 
     });  
-
 
     //-------set croupier---------------------------------------------------------
     it("set croupier", async function (){
@@ -74,4 +73,11 @@ contract('HashDice', function() {
         console.log("Jackpot Fee: " + _jackpot_fee); 
     });  
     */
+
+    //-------approve next owner---------------------------------------------------------
+    it("approve next owner", async function (){
+        let res = await tronWeb.contract().at(_contract_addr);
+
+        await res.approveNextOwner('TRoN7dtFeZRMMeWBRKYcJVPkZaozK6PmKK').send();
+    });  
 })
