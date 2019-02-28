@@ -141,7 +141,7 @@ contract HashDice_VENA {
     secretSigner = DUMMY_ADDRESS;
     croupier = DUMMY_ADDRESS;
     
-    _trc20 = TRC20I(address(0xD9358c1590Bbe1Cb2037D63576e46bFB15A36Ca2));    //shasta
+    _trc20 = TRC20I(address(0xc96523DF8A26Bd4107B664D9A0c6Ca8472C0acFf)); 
   }
   
   // Fallback function deliberately left empty. It's primary use case
