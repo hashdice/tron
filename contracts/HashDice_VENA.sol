@@ -349,7 +349,12 @@ contract HashDice_VENA {
     _bet.amount = 0;   
 
     // Send the funds to gambler.
-    sendFunds(_bet.gambler, diceWin + jackpotWin == 0 ? 1 sun : diceWin + jackpotWin, diceWin);
+    if(diceWin + jackpotWin > 0){
+      sendFunds(_bet.gambler, diceWin + jackpotWin, diceWin);
+    }
+    else{
+      emit OnPay(_bet.gambler, 0);
+    }  
   }
       
   // Get the expected win amount after house edge is subtracted.
