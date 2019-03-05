@@ -1,7 +1,7 @@
 
 const config = require('../config.js');
 
-var _contract_addr = 'TJpw9juMWzHLnJJbVZ9exPMrMKpuXHFLt6';
+var _contract_addr = 'TJhCzYPiW1hMUGP9Ez643H4J61UrhbL1Bu';
 
 contract('HashDice', function() {
     it("get contract variables", async function (){

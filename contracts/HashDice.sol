@@ -175,7 +175,12 @@ contract HashDice {
         // Larger modulos specify the range roll game.
         uint8 lower = uint8(_betMask);
         uint8 upper = uint8(_betMask >> 8); 
-        rollRange = uint(upper - lower + 1);    
+        if((_betMask >> 16) == 0){
+          rollRange = upper - lower + 1;    
+        } else {
+          rollRange = upper > lower ? _modulo - (upper-lower) + 1 : _modulo;
+        }
+
         require ( lower > 0 &&
               upper >= lower && 
               upper <= _modulo && 
@@ -295,10 +300,16 @@ contract HashDice {
         diceWin = diceWinAmount;
       }        
     } else {
-      // For larger modulos, check inclusion of roll range.
-      if (dice >= ( uint8(mask) - 1) && dice <= (uint8(mask >> 8) - 1)) {
-        diceWin = diceWinAmount;
-      }          
+      // For larger modulos, check inside/outside of roll range.
+      if((mask >> 16)==0){
+        if (dice >= (uint8(mask) - 1) && dice <= (uint8(mask >> 8) - 1)) {
+          diceWin = diceWinAmount;
+        }
+      } else {
+        if (dice <= (uint8(mask) - 1) || dice >= (uint8(mask >> 8) - 1)) {
+          diceWin = diceWinAmount;
+        }
+      }                
     }
         
     // Unlock the bet amount, regardless of the outcome.

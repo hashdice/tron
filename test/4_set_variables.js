@@ -1,6 +1,6 @@
 const config = require('../config.js');
 
-var _contract_addr = 'TJpw9juMWzHLnJJbVZ9exPMrMKpuXHFLt6'; //config.hashdice.contract;
+var _contract_addr = 'TJhCzYPiW1hMUGP9Ez643H4J61UrhbL1Bu'; //config.hashdice.contract;
 var _signer_hex = '0x8Bb2e6DF4bEd2dEDbF4CF69D1321d55f234e2f71';
 var _croupier_hex = '0x52a33D828482c31836e578E482E130f07D562d9e';
 

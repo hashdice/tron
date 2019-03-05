@@ -141,7 +141,7 @@ contract HashDice_VENA {
     secretSigner = DUMMY_ADDRESS;
     croupier = DUMMY_ADDRESS;
     
-    _trc20 = TRC20I(address(0xc96523DF8A26Bd4107B664D9A0c6Ca8472C0acFf)); 
+    _trc20 = TRC20I(address(0xc96523DF8A26Bd4107B664D9A0c6Ca8472C0acFf)); //(base58) TUL5yxRKeSWvceLZ3BSU5iNJcQmNxkWayh
   }
   
   // Fallback function deliberately left empty. It's primary use case
@@ -186,7 +186,12 @@ contract HashDice_VENA {
       rollRange = ((_betMask * POPCNT_MULT) & POPCNT_MASK) % POPCNT_MODULO;
     } else {
         // Larger modulos specify the range roll game.
-        rollRange = uint(uint8(_betMask >> 8) - uint8(_betMask) + 1);    
+        if((_betMask >> 16) == 0){
+          rollRange = uint8(_betMask >> 8) - uint8(_betMask) + 1;    
+        } else {
+          rollRange = uint8(_betMask >> 8) > uint8(_betMask) ? _modulo - (uint8(_betMask >> 8) - uint8(_betMask)) + 1 : _modulo;
+        }
+ 
         require ( uint8(_betMask) > 0 &&
               uint8(_betMask >> 8) >= uint8(_betMask) && 
               uint8(_betMask >> 8) <= _modulo && 
@@ -306,10 +311,16 @@ contract HashDice_VENA {
         diceWin = diceWinAmount;
       }        
     } else {
-      // For larger modulos, check inclusion of roll range.
-      if (dice >= (uint8(mask) - 1) && dice <= (uint8(mask >> 8) - 1)) {
-        diceWin = diceWinAmount;
-      }          
+      // For larger modulos, check inside/outside of roll range.
+      if((mask >> 16)==0){
+        if (dice >= (uint8(mask) - 1) && dice <= (uint8(mask >> 8) - 1)) {
+          diceWin = diceWinAmount;
+        }
+      } else {
+        if (dice <= (uint8(mask) - 1) || dice >= (uint8(mask >> 8) - 1)) {
+          diceWin = diceWinAmount;
+        }
+      }
     }
         
     // Unlock the bet amount, regardless of the outcome.
