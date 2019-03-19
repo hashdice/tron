@@ -26,7 +26,6 @@ contract HashDice {
   uint constant MAX_MODULO = 100;
   uint constant MAX_MASK_MODULO = 40;
   uint constant MAX_BET_MASK = 2 ** MAX_MASK_MODULO;
-  uint constant HOUSE_EDGE = 15;
   
   uint constant POPCNT_MULT = 0x0000000000002000000000100000000008000000000400000000020000000001;
   uint constant POPCNT_MASK = 0x0001041041041041041041041041041041041041041041041041041041041041;
@@ -42,10 +41,11 @@ contract HashDice {
   address public croupier;
   address public secretSigner;
 
-  uint public jackpotModulo = 1000;
+  uint public jackpotModulo = 100000;
   uint128 public jackpotSize;
   uint128 public lockedInBets;
-  uint public maxRollRange = 97;
+  uint public maxRollRange = 95;
+  uint public houseEdge = 25;
 
   // storage variables (与币种相关的部分)
   uint public maxProfit = 2000 trx;
@@ -352,7 +352,7 @@ contract HashDice {
         
     _jackpot_fee = amount >= minJackpotBet ? jackpotFee : 0;
         
-    uint _house_edge = amount * HOUSE_EDGE / 1000;
+    uint _house_edge = amount * houseEdge / 1000;
         
     if (_house_edge < minHouseEdge) {
       _house_edge = minHouseEdge;
@@ -401,6 +401,11 @@ contract HashDice {
   function setMinBet(uint _input) public onlyOwner {    
     minBet = _input;
   }
+
+  function setHouseEdge(uint _input) public onlyOwner {    
+    houseEdge = _input;
+  }
+
 
   function setMinHouseEdge(uint _input) public onlyOwner {    
     minHouseEdge = _input;

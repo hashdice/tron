@@ -47,10 +47,11 @@ contract HashDice_VENA {
   address public croupier;
   address public secretSigner;
 
-  uint public jackpotModulo = 1000;
+  uint public jackpotModulo = 100000;
   uint128 public jackpotSize;
   uint128 public lockedInBets;
-  uint public maxRollRange = 97;
+  uint public maxRollRange = 95;  
+  uint public houseEdge = 25;
 
   // storage variables (与币种相关的部分)  
   uint constant TOKEN_DECIMAL = 6;
@@ -363,7 +364,7 @@ contract HashDice_VENA {
         
     _jackpot_fee = amount >= minJackpotBet ? jackpotFee : 0;
         
-    uint _house_edge = amount * HOUSE_EDGE / 1000;
+    uint _house_edge = amount * houseEdge / 1000;
         
     if (_house_edge < minHouseEdge) {
       _house_edge = minHouseEdge;
