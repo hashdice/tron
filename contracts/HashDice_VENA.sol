@@ -31,7 +31,6 @@ contract HashDice_VENA {
   uint constant MAX_MODULO = 100;
   uint constant MAX_MASK_MODULO = 40;
   uint constant MAX_BET_MASK = 2 ** MAX_MASK_MODULO;
-  uint constant HOUSE_EDGE = 15;
   
   uint constant POPCNT_MULT = 0x0000000000002000000000100000000008000000000400000000020000000001;
   uint constant POPCNT_MASK = 0x0001041041041041041041041041041041041041041041041041041041041041;
@@ -46,11 +45,8 @@ contract HashDice_VENA {
   address private nextOwner;
   address public croupier;
   address public secretSigner;
-
-  uint public jackpotModulo = 100000;
-  uint128 public jackpotSize;
   uint128 public lockedInBets;
-  uint public maxRollRange = 95;  
+  uint public maxRollRange = 95;
   uint public houseEdge = 25;
 
   // storage variables (与币种相关的部分)  
@@ -58,12 +54,20 @@ contract HashDice_VENA {
 
   uint constant MAX_AMOUNT = 100000000 * (10 ** TOKEN_DECIMAL);  //100,000,000 VENA;
 
-  uint public maxProfit = 8000 * (10 ** TOKEN_DECIMAL);  //8,000 vena
-  uint public minBet = 80 * (10 ** TOKEN_DECIMAL);        //80 vena
-  uint public minHouseEdge = 2 * (10 ** TOKEN_DECIMAL);   //2 vena
+  uint public maxProfit = 20000 * (10 ** TOKEN_DECIMAL);  //20,000 vena
+  uint public minBet = 200 * (10 ** TOKEN_DECIMAL);        //200 vena
+  uint public minHouseEdge = 5 * (10 ** TOKEN_DECIMAL);   //5 vena
 
-  uint public minJackpotBet = 1000 * (10 ** TOKEN_DECIMAL);//1000 vena
-  uint public jackpotFee = 10 * (10 ** TOKEN_DECIMAL);     //10 vena
+  //Jackpot
+  uint public jackpotModulo = 10000;
+
+  uint128 public goldenPotSize;
+  uint public minGoldenPotBet = 5000 * (10 ** TOKEN_DECIMAL);//5000 vena
+  uint public goldenPotFee = 50 * (10 ** TOKEN_DECIMAL);     //50 vena
+  
+  uint128 public silverPotSize;
+  uint public minSilverPotBet = 1000 * (10 ** TOKEN_DECIMAL);//1000 vena
+  uint public silverPotFee = 10 * (10 ** TOKEN_DECIMAL);     //10 vena
   
   struct Bet {
     // 投注额(以sun为单位).
@@ -88,7 +92,8 @@ contract HashDice_VENA {
   event OnCommit(uint commit);
   event OnPay(address indexed beneficiary, uint amount);
   event OnFailedPay(address indexed beneficiary, uint amount);
-  event OnJackpotPay(address indexed beneficiary, uint amount);
+  event OnGoldenPotPay(address indexed beneficiary, uint amount);
+  event OnSilverPotPay(address indexed beneficiary, uint amount);
   
   //--------------------------------------------------------------------------------------------------
   // Contract status management, freeze placeBet while upgrade contract.
@@ -210,10 +215,15 @@ contract HashDice_VENA {
     
     // Lock funds.
     lockedInBets += uint128(possibleWinAmount);
-    jackpotSize += uint128(_jackpot_fee);
+    if(_amount >= minGoldenPotBet){
+      goldenPotSize += uint128(_jackpot_fee);
+    }      
+    else if(_amount >= minSilverPotBet){
+      silverPotSize += uint128(_jackpot_fee);
+    }   
     
     // Check whether contract has enough funds to process this bet.
-    require (jackpotSize + lockedInBets <=  _trc20.balanceOf(address(this)), "Cannot afford to lose this bet.");
+    require (goldenPotSize + silverPotSize + lockedInBets <=  _trc20.balanceOf(address(this)), "Cannot afford to lose this bet.");
     
     // Record commit in logs.
     emit OnCommit(_commit);
@@ -270,9 +280,13 @@ contract HashDice_VENA {
       
     assert(diceWinAmount <= lockedInBets);
     lockedInBets -= uint128(diceWinAmount);
-    // If jackpotSize overflow, that's very few accident, we offered jackpot fee.
-    if(_jackpot_fee <= jackpotSize)
-      jackpotSize -= uint128(_jackpot_fee);
+    // If jackpot size overflow, that's very few accident, we offered jackpot fee.
+    if(amount >= minGoldenPotBet && _jackpot_fee <= goldenPotSize) {
+      goldenPotSize -= uint128(_jackpot_fee);
+    }      
+    else if(amount >= minSilverPotBet && _jackpot_fee <= silverPotSize) {
+      silverPotSize -= uint128(_jackpot_fee);
+    }
       
     // Send the refund.
     sendFunds(bet.gambler, amount, amount);
@@ -328,22 +342,21 @@ contract HashDice_VENA {
     assert(diceWinAmount <= lockedInBets);
     lockedInBets -= uint128(diceWinAmount);
         
-    // Roll for a jackpot (if eligible).
-    if (amount >= minJackpotBet) {
-      // The second modulo, statistically independent from the "main" dice roll.
-      // Effectively you are playing two games at once!
-      uint jackpotRng = (uint(entropy) / modulo) % jackpotModulo;
-          
-      // Bingo!
-      if (jackpotRng == 0) {
-        jackpotWin = jackpotSize;
-        jackpotSize = 0;
+    // Roll for a jackpot (if qualified).
+    uint jackpotRng = (uint(entropy) / modulo) % jackpotModulo;
+    if(jackpotRng == 0) {
+      if(amount >= minGoldenPotBet) {
+        jackpotWin = goldenPotSize;
+        goldenPotSize = 0;
+        //Log jackpot pay
+        emit OnGoldenPotPay(_bet.gambler, jackpotWin);
       }
-    }
-        
-    // Log jackpot win.
-    if (jackpotWin > 0) {
-      emit OnJackpotPay(_bet.gambler, jackpotWin);
+      else if(amount >= minSilverPotBet){
+        jackpotWin = silverPotSize;
+        silverPotSize = 0;
+        //Log jackpot pay
+        emit OnSilverPotPay(_bet.gambler, jackpotWin);
+      }
     }
       
     // Move bet into 'processed' state already.
@@ -362,7 +375,7 @@ contract HashDice_VENA {
   function getDiceWinAmount(uint amount, uint modulo, uint rollRange) internal view returns (uint winAmount, uint _jackpot_fee) {
     require (0 < rollRange && rollRange <= modulo, "Win probability out of range.");
         
-    _jackpot_fee = amount >= minJackpotBet ? jackpotFee : 0;
+    _jackpot_fee = amount >= minGoldenPotBet ? goldenPotFee : (amount >= minSilverPotBet ? silverPotFee : 0);
         
     uint _house_edge = amount * houseEdge / 1000;
         
@@ -414,16 +427,28 @@ contract HashDice_VENA {
     minBet = _input;
   }
 
+  function setHouseEdge(uint _input) public onlyOwner {    
+    houseEdge = _input;
+  }
+
   function setMinHouseEdge(uint _input) public onlyOwner {    
     minHouseEdge = _input;
   }
 
-  function setMinJackpotBet(uint _input) public onlyOwner {    
-    minJackpotBet = _input;
+  function setMinGoldenPotBet(uint _input) public onlyOwner {    
+    minGoldenPotBet = _input;
   }
 
-  function setJackpotFee(uint _input) public onlyOwner {    
-    jackpotFee = _input;
+  function setMinSilverPotBet(uint _input) public onlyOwner {    
+    minSilverPotBet = _input;
+  }
+
+  function setGoldenPotFee(uint _input) public onlyOwner {    
+    goldenPotFee = _input;
+  }
+
+  function setSilverPotFee(uint _input) public onlyOwner {    
+    silverPotFee = _input;
   }
 
   function setJackpotModulo(uint _input) public onlyOwner {    
@@ -434,17 +459,22 @@ contract HashDice_VENA {
     maxRollRange = _input;
   }  
 
-  // This function is used to bump up the jackpot fund. Cannot be used to lower it.
-  function increaseJackpot(uint increaseAmount) public onlyOwner {
-    require (increaseAmount <= _trc20.balanceOf(address(this)), "Increase amount larger than balance.");
-    require (jackpotSize + lockedInBets + increaseAmount <= _trc20.balanceOf(address(this)), "Not enough funds.");
-    jackpotSize += uint128(increaseAmount);
+  // This function is used to bump up the golden jackpot fund. Cannot be used to lower it.
+  function increaseGoldenPot(uint increaseAmount) public onlyOwner {
+    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
+    goldenPotSize += uint128(increaseAmount);
+  }
+
+  // This function is used to bump up the silver jackpot fund. Cannot be used to lower it.
+  function increaseSilverPot(uint increaseAmount) public onlyOwner {
+    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
+    silverPotSize += uint128(increaseAmount);
   }
         
   // Funds withdrawal to cover costs of HashDice operation.
   function withdrawFunds(address beneficiary, uint withdrawAmount) public onlyOwner {
     require (withdrawAmount <= _trc20.balanceOf(address(this)), "Increase amount larger than balance.");
-    require (jackpotSize + lockedInBets + withdrawAmount <= _trc20.balanceOf(address(this)), "Not enough funds.");
+    require (goldenPotSize + silverPotSize + lockedInBets + withdrawAmount <= _trc20.balanceOf(address(this)), "Not enough funds.");
     sendFunds(beneficiary, withdrawAmount, withdrawAmount);
   }
         

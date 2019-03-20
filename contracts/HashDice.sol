@@ -22,7 +22,6 @@ pragma solidity ^0.4.20;
 contract HashDice {
   //--------------------------------------------------------------------------------------------------
   // constants.
-  uint constant MAX_AMOUNT = 100000000 trx;
   uint constant MAX_MODULO = 100;
   uint constant MAX_MASK_MODULO = 40;
   uint constant MAX_BET_MASK = 2 ** MAX_MASK_MODULO;
@@ -40,21 +39,28 @@ contract HashDice {
   address private nextOwner;
   address public croupier;
   address public secretSigner;
-
-  uint public jackpotModulo = 100000;
-  uint128 public jackpotSize;
   uint128 public lockedInBets;
   uint public maxRollRange = 95;
   uint public houseEdge = 25;
 
-  // storage variables (与币种相关的部分)
+  // storage variables (与币种相关的部分)  
+  uint constant MAX_AMOUNT = 100000000 trx;
+
   uint public maxProfit = 2000 trx;
   uint public minBet = 20 trx;
-  uint public minHouseEdge = 0.5 trx;
+  uint public minHouseEdge = 0.5 trx;  
 
-  uint public minJackpotBet = 500 trx;
-  uint public jackpotFee = 5 trx;
+  //Jackpot
+  uint public jackpotModulo = 10000;
+
+  uint128 public goldenPotSize;
+  uint public minGoldenPotBet = 500 trx;
+  uint public goldenPotFee = 5 trx;
   
+  uint128 public silverPotSize;
+  uint public minSilverPotBet = 100 trx;
+  uint public silverPotFee = 1 trx;
+
   struct Bet {
     // 投注额(以sun为单位).
     uint amount;
@@ -78,7 +84,8 @@ contract HashDice {
   event OnCommit(uint commit);
   event OnPay(address indexed beneficiary, uint amount);
   event OnFailedPay(address indexed beneficiary, uint amount);
-  event OnJackpotPay(address indexed beneficiary, uint amount);
+  event OnGoldenPotPay(address indexed beneficiary, uint amount);
+  event OnSilverPotPay(address indexed beneficiary, uint amount);
   
   //--------------------------------------------------------------------------------------------------
   // Contract status management, freeze placeBet while upgrade contract.
@@ -198,10 +205,15 @@ contract HashDice {
     
     // Lock funds.
     lockedInBets += uint128(possibleWinAmount);
-    jackpotSize += uint128(_jackpot_fee);
+    if(amount >= minGoldenPotBet){
+      goldenPotSize += uint128(_jackpot_fee);
+    }      
+    else if(amount >= minSilverPotBet){
+      silverPotSize += uint128(_jackpot_fee);
+    }      
     
     // Check whether contract has enough funds to process this bet.
-    require (jackpotSize + lockedInBets <= address(this).balance, "Cannot afford to lose this bet.");
+    require (goldenPotSize + silverPotSize + lockedInBets <= address(this).balance, "Cannot afford to lose this bet.");
     
     // Record commit in logs.
     emit OnCommit(_commit);
@@ -258,9 +270,14 @@ contract HashDice {
       
     assert(diceWinAmount <= lockedInBets);
     lockedInBets -= uint128(diceWinAmount);
-    // If jackpotSize overflow, that's very few accident, we offered jackpot fee.
-    if(_jackpot_fee <= jackpotSize)
-      jackpotSize -= uint128(_jackpot_fee);
+    // If jackpot size overflow, that's very few accident, contract offered jackpot fee.
+    if(amount >= minGoldenPotBet && _jackpot_fee <= goldenPotSize) {
+      goldenPotSize -= uint128(_jackpot_fee);
+    }      
+    else if(amount >= minSilverPotBet && _jackpot_fee <= silverPotSize) {
+      silverPotSize -= uint128(_jackpot_fee);
+    }
+      
       
     // Send the refund.
     sendFunds(bet.gambler, amount, amount);
@@ -315,25 +332,24 @@ contract HashDice {
     // Unlock the bet amount, regardless of the outcome.
     assert(diceWinAmount <= lockedInBets);
     lockedInBets -= uint128(diceWinAmount);
-        
-    // Roll for a jackpot (if eligible).
-    if (amount >= minJackpotBet) {
-      // The second modulo, statistically independent from the "main" dice roll.
-      // Effectively you are playing two games at once!
-      uint jackpotRng = (uint(entropy) / modulo) % jackpotModulo;
-          
-      // Bingo!
-      if (jackpotRng == 0) {
-        jackpotWin = jackpotSize;
-        jackpotSize = 0;
+    
+    // Roll for a jackpot (if qualified).
+    uint jackpotRng = (uint(entropy) / modulo) % jackpotModulo;
+    if(jackpotRng == 0) {
+      if(amount >= minGoldenPotBet) {
+        jackpotWin = goldenPotSize;
+        goldenPotSize = 0;
+        //Log jackpot pay
+        emit OnGoldenPotPay(_bet.gambler, jackpotWin);
+      }
+      else if(amount >= minSilverPotBet){
+        jackpotWin = silverPotSize;
+        silverPotSize = 0;
+        //Log jackpot pay
+        emit OnSilverPotPay(_bet.gambler, jackpotWin);
       }
     }
-        
-    // Log jackpot win.
-    if (jackpotWin > 0) {
-      emit OnJackpotPay(_bet.gambler, jackpotWin);
-    }
-            
+ 
     // Move bet into 'processed' state already.
     _bet.amount = 0;    
 
@@ -350,7 +366,7 @@ contract HashDice {
   function getDiceWinAmount(uint amount, uint modulo, uint rollRange) internal view returns (uint winAmount, uint _jackpot_fee) {
     require (0 < rollRange && rollRange <= modulo, "Win probability out of range.");
         
-    _jackpot_fee = amount >= minJackpotBet ? jackpotFee : 0;
+    _jackpot_fee = amount >= minGoldenPotBet ? goldenPotFee : (amount >= minSilverPotBet ? silverPotFee : 0);
         
     uint _house_edge = amount * houseEdge / 1000;
         
@@ -406,17 +422,24 @@ contract HashDice {
     houseEdge = _input;
   }
 
-
   function setMinHouseEdge(uint _input) public onlyOwner {    
     minHouseEdge = _input;
   }
 
-  function setMinJackpotBet(uint _input) public onlyOwner {    
-    minJackpotBet = _input;
+  function setMinGoldenPotBet(uint _input) public onlyOwner {    
+    minGoldenPotBet = _input;
   }
 
-  function setJackpotFee(uint _input) public onlyOwner {    
-    jackpotFee = _input;
+  function setMinSilverPotBet(uint _input) public onlyOwner {    
+    minSilverPotBet = _input;
+  }
+
+  function setGoldenPotFee(uint _input) public onlyOwner {    
+    goldenPotFee = _input;
+  }
+
+  function setSilverPotFee(uint _input) public onlyOwner {    
+    silverPotFee = _input;
   }
 
   function setJackpotModulo(uint _input) public onlyOwner {    
@@ -427,17 +450,22 @@ contract HashDice {
     maxRollRange = _input;
   }  
 
-  // This function is used to bump up the jackpot fund. Cannot be used to lower it.
-  function increaseJackpot(uint increaseAmount) public onlyOwner {
-    require (increaseAmount <= address(this).balance, "Increase amount larger than balance.");
-    require (jackpotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
-    jackpotSize += uint128(increaseAmount);
+  // This function is used to bump up the golden jackpot fund. Cannot be used to lower it.
+  function increaseGoldenPot(uint increaseAmount) public onlyOwner {
+    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
+    goldenPotSize += uint128(increaseAmount);
+  }
+
+  // This function is used to bump up the silver jackpot fund. Cannot be used to lower it.
+  function increaseSilverPot(uint increaseAmount) public onlyOwner {
+    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
+    silverPotSize += uint128(increaseAmount);
   }
         
   // Funds withdrawal to cover costs of HashDice operation.
   function withdrawFunds(address beneficiary, uint withdrawAmount) public onlyOwner {
     require (withdrawAmount <= address(this).balance, "Increase amount larger than balance.");
-    require (jackpotSize + lockedInBets + withdrawAmount <= address(this).balance, "Not enough funds.");
+    require (goldenPotSize + silverPotSize + lockedInBets + withdrawAmount <= address(this).balance, "Not enough funds.");
     sendFunds(beneficiary, withdrawAmount, withdrawAmount);
   }
         
