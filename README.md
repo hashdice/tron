@@ -52,8 +52,8 @@ View contract abi and bytecode.
 
 The official HashDice contract has been deployed at the following addresses:  
 
-HashDice: [https://tronscan.org/#/contract/TV1UiHu2CFHjMyFBL4T2NwmPvbtw1ijPvZ](https://tronscan.org/#/contract/TV1UiHu2CFHjMyFBL4T2NwmPvbtw1ijPvZ)   
-HashDice(Vena): [https://tronscan.org/#/contract/TAcZoLx2ciootrVE33nKh8FLt158SBwEQ2](https://tronscan.org/#/contract/TAcZoLx2ciootrVE33nKh8FLt158SBwEQ2)  
+HashDice: [https://tronscan.org/#/contract/TVWT2gVe2uKASxKYasFzc8uM5b4x1UFwmd](https://tronscan.org/#/contract/TVWT2gVe2uKASxKYasFzc8uM5b4x1UFwmd)   
+HashDice(Vena): [https://tronscan.org/#/contract/TH7u3qDLrz7DKH6UPBgEwFBYBitSEfEYtq](https://tronscan.org/#/contract/TH7u3qDLrz7DKH6UPBgEwFBYBitSEfEYtq)  
 HDT TRC20 token: [https://tronscan.org/#/contract/TS7qKrrHe5GUJmpqo7s4tAPNcasPh7umFM](https://tronscan.org/#/contract/TS7qKrrHe5GUJmpqo7s4tAPNcasPh7umFM)  
 Vena TRC20 token: [https://tronscan.org/#/contract/TUL5yxRKeSWvceLZ3BSU5iNJcQmNxkWayh](https://tronscan.org/#/contract/TUL5yxRKeSWvceLZ3BSU5iNJcQmNxkWayh)   
 
