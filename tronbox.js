@@ -6,7 +6,7 @@ module.exports = {
       from: 'your address',
       privateKey: 'your private key',
       consume_user_resource_percent: 5,
-      fee_limit: 100000000,    //10 trx
+      fee_limit: 100000000,    //100 trx
       origin_energy_limit: 10000000,  //10 trx
       host: "https://api.trongrid.io",
       port: 8090,
