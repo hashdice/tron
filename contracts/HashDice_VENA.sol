@@ -461,13 +461,13 @@ contract HashDice_VENA {
 
   // This function is used to bump up the golden jackpot fund. Cannot be used to lower it.
   function increaseGoldenPot(uint increaseAmount) public onlyOwner {
-    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
+    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= _trc20.balanceOf(address(this)), "Not enough funds.");
     goldenPotSize += uint128(increaseAmount);
   }
 
   // This function is used to bump up the silver jackpot fund. Cannot be used to lower it.
   function increaseSilverPot(uint increaseAmount) public onlyOwner {
-    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= address(this).balance, "Not enough funds.");
+    require (goldenPotSize + silverPotSize + lockedInBets + increaseAmount <= _trc20.balanceOf(address(this)), "Not enough funds.");
     silverPotSize += uint128(increaseAmount);
   }
         
